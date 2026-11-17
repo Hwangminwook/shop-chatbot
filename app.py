@@ -11,7 +11,7 @@ THRESHOLD = 0.3
 
 # 어느 카테고리에나 나오는 말. 비교 전에 지워서 핵심 단어로만 비교하게 한다.
 FILLER_WORDS = [
-    "어떻게", "언제", "오늘", "내일", "얼마", "어디", "혹시", "그냥", "너무", "아직",
+    "어떻게", "오늘", "어디", "혹시", "그냥", "너무", "뭐",
     "하고 싶어요", "싶어요", "싶은데", "해주세요", "주세요", "할게요", "하려면",
     "하나요", "되나요", "있나요", "가능한가요", "가능해요", "인데요", "는데요",
     "이에요", "예요", "어때", "해요", "돼요", "나요", "요",
@@ -28,10 +28,11 @@ def normalize(text):
 def build_model():
     """예시 문장들을 글자 단위 TF-IDF 벡터로 바꿔 둔다 (앱 시작 시 한 번만 실행)."""
     sentences, labels = [], []
-    for intent, data in INTENTS.items():
-        for example in data["examples"]:
-            sentences.append(example)
-            labels.append(intent)
+    for category, topics in INTENTS.items():
+        for topic, data in topics.items():
+            for example in data["examples"]:
+                sentences.append(example)
+                labels.append((category, topic))
 
     # 글자 2~3개 단위로 비교하면 한국어 어미 변화에도 잘 맞는다
     vectorizer = TfidfVectorizer(analyzer="char_wb", ngram_range=(2, 3), preprocessor=normalize)
@@ -40,7 +41,7 @@ def build_model():
 
 
 def classify(question):
-    """질문과 가장 비슷한 예시 문장을 찾아 (카테고리, 유사도)를 돌려준다."""
+    """질문과 가장 비슷한 예시 문장을 찾아 ((카테고리, 세부 질문), 유사도)를 돌려준다."""
     vectorizer, matrix, labels = build_model()
     scores = cosine_similarity(vectorizer.transform([question]), matrix)[0]
     best = scores.argmax()
@@ -53,7 +54,8 @@ def answer(question):
     intent, _ = classify(question)
     if intent is None:
         return FALLBACK_ANSWER
-    return INTENTS[intent]["answer"]
+    category, topic = intent
+    return INTENTS[category][topic]["answer"]
 
 
 st.title("🛒 쇼핑몰 고객센터")
